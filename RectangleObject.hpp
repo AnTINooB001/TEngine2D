@@ -1,13 +1,14 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#ifndef RECTANGLE_OBJECT_H
+#define RECTANGLE_OBJECT_H
 
 //#include "Object.hpp"
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include <math.h>
 
 class RectangleObject
 {
-private:
+protected:
     sf::RectangleShape shape;
     RectangleObject* fatherObject;
     sf::Texture texture;
@@ -18,14 +19,13 @@ public:
     int loadTexture(std::string);
     void setFather(RectangleObject*);
     RectangleObject* getFather();
-    void move(sf::Vector2f);
+    virtual void move(sf::Vector2f);
     void setPosition(sf::Vector2f);
-    sf::Vector2f getPosition() const;
-    sf::Vector2f getCoord() const;
+    virtual sf::Vector2f getPosition() const;
+    virtual sf::Vector2f getGlobalPosition() const;
     void setSize(sf::Vector2f);
     sf::Vector2f getSize() const;
     void draw(sf::RenderWindow&);
- 
 };
 
 #endif
