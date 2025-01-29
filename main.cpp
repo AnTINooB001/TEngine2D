@@ -2,8 +2,9 @@
 #include <iostream>
 #include "World.hpp"
 #include "Camera.hpp"
+#include "CircleShape.hpp"
+#include "Player.hpp"
 
-#define EXIT_SUCCESSFUL 1
 
 
 #define CAM_BORDER 70
@@ -21,7 +22,7 @@ sf::Vector2f enemyPos(30,30);
 float playerSpeed = 0.1f;
 sf::Vector2f pos_off(0,0);
 
-void processPlayerMove(World*,RectangleObject*, RectangleObject*);    
+void processPlayerMove(World*,Camera*, Player*);    
 
 
 struct Keys
@@ -40,34 +41,36 @@ struct Keys
 
 int main(int argc, char* argv[])            
 {
-
-
     srand(time(NULL));
     sf::RenderWindow window(sf::VideoMode(CAM_WIDTH,CAM_HEIGHT), "Game");
 
-    World* world = World::createWorld(sf::Vector2f(5000,5000),"map.png");
+    World* world = World::getWorld(sf::Vector2f(5000,5000),"map.png");
     if(world == nullptr)
     {
         std::cout<<"world is nullptr!" << "\n";
         return -1;
     }
     Camera* camera = new Camera{world,nullptr,sf::Vector2f(CAM_WIDTH,CAM_HEIGHT)};
-    Player* player = new Player{nullptr,sf::Vector2f(PLAYER_WIDTH,PLAYER_HEIGHT)};
-    player->loadTexture("map.png");
-    world->addObject(player,"player");
+    Player* player = new Player{nullptr,sf::Vector2f(PLAYER_WIDTH,PLAYER_HEIGHT),sf::Vector2f(CAM_WIDTH/2,CAM_HEIGHT/2)};
+    //player->loadTexture("map.png");
+    world->addObject(player);
     if(player == nullptr || camera == nullptr)
     {
         std::cout<<"player or camera is nullptr!" << "\n";
         return -1;
     }
 
+    CircleObject c{nullptr,"circle",30, enemyPos+enemyPos+enemyPos+enemyPos+enemyPos};
+    world->addObject(&c);
 
-    RectangleObject enemy{nullptr,sf::Vector2f{ENEMY_WIDTH,ENEMY_HEIGHT}, enemyPos};
-    world->addObject(&enemy,"enemy");
-    RectangleObject enemy2{&enemy,sf::Vector2f{ENEMY_WIDTH,ENEMY_HEIGHT}, enemyPos};
-    world->addObject(&enemy2,"enemy2");
-    // if(enemy.loadTexture("map.png") != EXIT_SUCCESSFUL)
-    //     return -1;     
+    RectangleObject enemy{nullptr,"enemy",sf::Vector2f{ENEMY_WIDTH,ENEMY_HEIGHT}, enemyPos};
+    world->addObject(&enemy);
+    //enemy.setDrawable(false);
+    RectangleObject enemy2{&enemy,"enemy2",sf::Vector2f{ENEMY_WIDTH,ENEMY_HEIGHT}, enemyPos};
+    world->addObject(&enemy2);
+
+    RectangleObject stone{nullptr,"stone",sf::Vector2f{ENEMY_WIDTH,ENEMY_HEIGHT}, enemyPos};
+    world->addObject(&stone); 
 
     
     sf::Vector2i prev_mouse_pos(0,0);
@@ -110,6 +113,7 @@ int main(int argc, char* argv[])
         }
 
         enemy.move(sf::Vector2f(0.01,0.01));
+        //enemy2.move(sf::Vector2f(0.01,0.01));
         // ---------------------------------- KEYBOARD ----------------------------------------------------
 
         processPlayerMove(world,camera,player);
@@ -119,48 +123,60 @@ int main(int argc, char* argv[])
         window.clear();
         world->draw(window);
         window.display();                   
-        std::cout<<"player position x - " << player->getPosition().x << " y - " << player->getPosition().y << "\n";
-        std::cout<<"player coord x - " << player->getGlobalPosition().x << " y - " << player->getGlobalPosition().y << "\n";
+        //std::cout<<"player position x - " << player->getPosition().x << " y - " << player->getPosition().y << "\n";
+        std::cout<<"player coord x - " << player->getGlobalBounds().getPosition().x << " y - " << player->getGlobalBounds().getPosition().y << "\n";
+        // std::cout<<"enemy1 coord x - " << enemy.getGlobalPosition().x << " y - " << enemy.getGlobalPosition().y << "\n";
+        //std::cout<<"enemy2 coord x - " << enemy2.getGlobalBounds().getPosition().x << " y - " << enemy2.getGlobalBounds().getPosition().y << "\n";
+        //std::cout<<"stone coord x - " << stone.getGlobalPosition().x << " y - " << stone.getGlobalPosition().y << "\n";
+        //std::cout<<"world position x - " << world->getPosition().x << " y - " << world->getPosition().y << "\n";
         std::cout<<"camera coords x - " << camera->getPosition().x << " y - " << camera->getPosition().y << "\n";
     }
     
     return 0;
 }
 
-void processPlayerMove(World* world,RectangleObject* camera, RectangleObject* player)
+
+void processPlayerMove(World* world,Camera* camera, Player* player)
 {
-    
+    for(auto& el : World::getWorld()->getObjects()) {
+        if(player->isCollisioned(el.second) && el.second->isDrawable() && el.second->getName() != player->getName() )
+        {
+            sf::Vector2f dist = el.second->getGlobalPosition() - player->getGlobalPosition();
+            dist.x /= abs(dist.x);
+            dist.y /= abs(dist.y);
+            
+            player->move(sf::Vector2f(-playerSpeed*dist.x,-playerSpeed*dist.y));
+            break;
+        }
+    }
     if(sf::Keyboard::isKeyPressed(Key.moveDown))        
     {
-        player->move(sf::Vector2f(0,playerSpeed));
-        if(player->getPosition().y-camera->getPosition().y > camera->getSize().y-CAM_BORDER-player->getSize().y)
+        if(player->getGlobalPosition().y-camera->getGlobalPosition().y > camera->getSize().y-CAM_BORDER-player->getSize().y)
             camera->move(sf::Vector2f(0,playerSpeed));
-        
+        player->move(sf::Vector2f(0,playerSpeed));
     }
     if(sf::Keyboard::isKeyPressed(Key.moveUp))
     {
-        if(player->getPosition().y-camera->getPosition().y < CAM_BORDER)
+        if(player->getGlobalPosition().y-camera->getGlobalPosition().y < CAM_BORDER)
             camera->move(sf::Vector2f(0,-playerSpeed));
         player->move(sf::Vector2f(0,-playerSpeed));
-        
+
     }
     if(sf::Keyboard::isKeyPressed(Key.moveLeft))
     {
-        if(player->getPosition().x-camera->getPosition().x < CAM_BORDER)
+        if(player->getGlobalPosition().x-camera->getGlobalPosition().x < CAM_BORDER)
             camera->move(sf::Vector2f(-playerSpeed,0));
         player->move(sf::Vector2f(-playerSpeed,0));
-        
     }
     if(sf::Keyboard::isKeyPressed(Key.moveRight))
     {
-        if(player->getPosition().x-camera->getPosition().x > CAM_WIDTH-CAM_BORDER-PLAYER_WIDTH)
-            camera->move(sf::Vector2f(2*playerSpeed,0));
+        if(player->getGlobalPosition().x-camera->getGlobalPosition().x > CAM_WIDTH-CAM_BORDER-PLAYER_WIDTH)
+            camera->move(sf::Vector2f(playerSpeed,0));
         player->move(sf::Vector2f(playerSpeed,0));
-
     }
     if(sf::Keyboard::isKeyPressed(Key.fire))
     {
         static int count = 0;
         
     }
-}
+} 
